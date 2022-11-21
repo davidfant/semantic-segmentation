@@ -24,7 +24,7 @@ class CIHP(Dataset):
         self.ignore_label = 255
 
         img_path = Path(root) / 'instance-level_human_parsing' / split / 'Images' 
-        self.files = list(img_path.glob('*.jpg'))
+        self.files = list(img_path.glob('*'))
     
         if not self.files:
             raise Exception(f"No images found in {img_path}")
@@ -37,7 +37,7 @@ class CIHP(Dataset):
         img_path = str(self.files[index])
         lbl_path = str(self.files[index]).replace('Images', 'Category_ids').replace('.jpg', '.png')
 
-        image = io.read_image(img_path)
+        image = io.read_image(img_path, mode = io.ImageReadMode.RGB)
         label = io.read_image(lbl_path)
 
         if self.transform:
@@ -54,4 +54,4 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, '.')
     from semseg.utils.visualize import visualize_dataset_sample
-    visualize_dataset_sample(CCIHP, 'C:\\Users\\sithu\\Documents\\Datasets\\LIP\\CIHP')
+    visualize_dataset_sample(CCIHP, '/home/vrushank/Spyne/HR-Viton/Segmentation')

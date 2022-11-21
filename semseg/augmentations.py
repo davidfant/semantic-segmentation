@@ -276,15 +276,16 @@ class Resize:
         H, W = img.shape[1:]
 
         # scale the image 
-        scale_factor = self.size[0] / min(H, W)
-        nH, nW = round(H*scale_factor), round(W*scale_factor)
-        img = TF.resize(img, (nH, nW), TF.InterpolationMode.BILINEAR)
-        mask = TF.resize(mask, (nH, nW), TF.InterpolationMode.NEAREST)
-
+        #scale_factor = self.size[0] / min(H, W)
+        #print(scale_factor)
+        #nH, nW = round(H*scale_factor), round(W*scale_factor)
+        img = TF.resize(img, (512, 512), TF.InterpolationMode.BILINEAR)
+        mask = TF.resize(mask, (512, 512), TF.InterpolationMode.NEAREST)
         # make the image divisible by stride
-        alignH, alignW = int(math.ceil(nH / 32)) * 32, int(math.ceil(nW / 32)) * 32
+        alignH, alignW = int(math.ceil(512 / 32)) * 32, int(math.ceil(512 / 32)) * 32
         img = TF.resize(img, (alignH, alignW), TF.InterpolationMode.BILINEAR)
         mask = TF.resize(mask, (alignH, alignW), TF.InterpolationMode.NEAREST)
+        
         return img, mask 
 
 
@@ -333,14 +334,15 @@ class RandomResizedCrop:
 
 def get_train_augmentation(size: Union[int, Tuple[int], List[int]], seg_fill: int = 0):
     return Compose([
+        # Resize(size),
         # ColorJitter(brightness=0.0, contrast=0.5, saturation=0.5, hue=0.5),
-        # RandomAdjustSharpness(sharpness_factor=0.1, p=0.5),
+        RandomAdjustSharpness(sharpness_factor=0.1, p=0.1),
         # RandomAutoContrast(p=0.2),
         RandomHorizontalFlip(p=0.5),
         # RandomVerticalFlip(p=0.5),
-        # RandomGaussianBlur((3, 3), p=0.5),
+        RandomGaussianBlur((3, 3), p=0.01),
         # RandomGrayscale(p=0.5),
-        # RandomRotation(degrees=10, p=0.3, seg_fill=seg_fill),
+        RandomRotation(degrees=10, p=0.1, seg_fill=seg_fill),
         RandomResizedCrop(size, scale=(0.5, 2.0), seg_fill=seg_fill),
         Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     ])

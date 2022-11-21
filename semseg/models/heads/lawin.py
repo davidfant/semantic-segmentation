@@ -139,7 +139,7 @@ class LawinHead(nn.Module):
 
         self.low_level_fuse = ConvModule(embed_dim+48, embed_dim)
         self.linear_pred = nn.Conv2d(embed_dim, num_classes, 1)
-        self.dropout = nn.Dropout2d(0.1)
+        self.dropout = nn.Dropout2d(0.15)
     
     def get_lawin_att_feats(self, x: Tensor, patch_size: int):
         _, _, H, W = x.shape

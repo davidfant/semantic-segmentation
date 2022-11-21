@@ -41,15 +41,15 @@ class SemSeg:
 
     def preprocess(self, image: Tensor) -> Tensor:
         H, W = image.shape[1:]
-        console.print(f"Original Image Size > [red]{H}x{W}[/red]")
+        #console.print(f"Original Image Size > [red]{H}x{W}[/red]")
         # scale the short side of image to target size
         scale_factor = self.size[0] / min(H, W)
         nH, nW = round(H*scale_factor), round(W*scale_factor)
         # make it divisible by model stride
         nH, nW = int(math.ceil(nH / 32)) * 32, int(math.ceil(nW / 32)) * 32
-        console.print(f"Inference Image Size > [red]{nH}x{nW}[/red]")
+        #console.print(f"Inference Image Size > [red]{nH}x{nW}[/red]")
         # resize the image
-        image = T.Resize((nH, nW))(image)
+        image = T.Resize((512, 512))(image)
         # divide by 255, norm and add batch dim
         image = self.tf_pipeline(image).to(self.device)
         return image
@@ -83,7 +83,7 @@ class SemSeg:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, default='configs/ade20k.yaml')
+    parser.add_argument('--cfg', type=str, default='configs/lawin.yaml')
     args = parser.parse_args()
 
     with open(args.cfg) as f:

@@ -10,7 +10,7 @@ class Lawin(BaseModel):
     Notes::::: This implementation has larger params and FLOPs than the results reported in the paper.
     Will update the code and weights if the original author releases the full code.
     """
-    def __init__(self, backbone: str = 'MiT-B0', num_classes: int = 19) -> None:
+    def __init__(self, backbone: str = 'MiT-B0', num_classes: int = 20) -> None:
         super().__init__(backbone, num_classes)
         self.decode_head = LawinHead(self.backbone.channels, 256 if 'B0' in backbone else 512, num_classes)
         self.apply(self._init_weights)

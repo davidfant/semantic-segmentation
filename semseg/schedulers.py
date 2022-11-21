@@ -95,11 +95,11 @@ def get_scheduler(scheduler_name: str, optimizer, max_iter: int, power: int, war
 
 if __name__ == '__main__':
     model = torch.nn.Conv2d(3, 16, 3, 1, 1)
-    optim = torch.optim.SGD(model.parameters(), lr=1e-3)
+    optim = torch.optim.SGD(model.parameters(), lr=1e-4)
 
-    max_iter = 20000
-    sched = WarmupPolyLR(optim, power=0.9, max_iter=max_iter, warmup_iter=200, warmup_ratio=0.1, warmup='exp', last_epoch=-1)
-
+    max_iter = 7070*100
+    sched = WarmupPolyLR(optim, power=0.8, max_iter=max_iter, warmup_iter=2000, warmup_ratio=0.2, warmup='exp', last_epoch=-1)
+    #sched = WarmupCosineLR(optim, max_iter)
     lrs = []
 
     for _ in range(max_iter):
@@ -113,4 +113,5 @@ if __name__ == '__main__':
 
     plt.plot(np.arange(len(lrs)), np.array(lrs))
     plt.grid()
+    plt.savefig('WarmupPolyLR.png')
     plt.show()
