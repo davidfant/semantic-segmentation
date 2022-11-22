@@ -18,16 +18,17 @@ from semseg.utils.utils import setup_cudnn
 
 
 @torch.no_grad()
-def evaluate(model, dataloader, loss_fn, device):
+def evaluate(model, dataloader, loss_fn, device, global_step):
     print('Evaluating...')
     model.eval()
     metrics = Metrics(dataloader.dataset.n_classes, dataloader.dataset.ignore_label, device)
-    palette = torch.tensor([[120, 120, 120], [127, 0, 0], [254, 0, 0], [0, 84, 0], [169, 0, 50], [254, 84, 0], [255, 0, 84], [0, 118, 220], [84, 84, 0], [0, 84, 84], [84, 50, 0], [51, 85, 127], [0, 127, 0], [0, 0, 254], [50, 169, 220], [0, 254, 254], [84, 254, 169], [169, 254, 84], [254, 254, 0], [254, 169, 0], [102, 254, 0], [182, 255, 0]])
-    loop = tqdm(dataloader, leave = True, position = 0)
+    palette = torch.tensor([[120, 120, 120], [127, 0, 0], [254, 0, 0], [0, 84, 0], [169, 0, 50], [254, 84, 0], [255, 0, 84], [0, 118, 220], [84, 84, 0], [0, 84, 84], [84, 50, 0], [
+                           51, 85, 127], [0, 127, 0], [0, 0, 254], [50, 169, 220], [0, 254, 254], [84, 254, 169], [169, 254, 84], [254, 254, 0], [254, 169, 0], [102, 254, 0], [182, 255, 0]])
+    loop = tqdm(dataloader, leave=True, position=0)
     val_loss, l_miou, l_macc, l_mf1 = [], [], [], []
     l_images, l_targets, l_predictions = [], [], []
     for idx, (images, labels) in enumerate(loop):
-        
+
         images = images.to(device)
         labels = labels.to(device)
         preds = model(images)
@@ -56,7 +57,7 @@ def evaluate(model, dataloader, loss_fn, device):
                 image = inv_normalize(img)
                 image *= 255
                 #images = torch.vstack([image, labels])
-                l_images.append(wandb.Image(image.to(torch.uint8).cpu().numpy().transpose((1,2,0))))
+                l_images.append(wandb.Image(image.to(torch.uint8).cpu().numpy().transpose((1, 2, 0))))
                 l_targets.append(wandb.Image(label.to(torch.uint8).cpu().numpy()))
                 l_predictions.append(wandb.Image(seg_image.to(torch.uint8).cpu().numpy()))
 
@@ -65,33 +66,41 @@ def evaluate(model, dataloader, loss_fn, device):
     t_macc = sum(l_macc)/len(l_macc)
     t_mf1 = sum(l_mf1)/len(l_mf1)
 
-    wandb.log({'Valid loss': idx_loss, 'Valid MIoU': t_miou, 'Valid MAcc': t_macc, 'Valid MF1': t_mf1})
-    wandb.log({'Image': l_images, 'Target': l_targets, 'Prediction': l_predictions})
+    wandb.log({
+        'Valid loss': idx_loss,
+        'Valid MIoU': t_miou,
+        'Valid MAcc': t_macc,
+        'Valid MF1': t_mf1,
+        'Image': l_images,
+        'Target': l_targets,
+        'Prediction': l_predictions
+    }, step=global_step)
 
     return acc, macc, f1, mf1, ious, miou
+
 
 @torch.no_grad()
 def evaluate_train(model, dataloader, device):
     print('Evaluating training epoch...')
     model.eval()
     metrics = Metrics(dataloader.dataset.n_classes, dataloader.dataset.ignore_label, device)
-    palette = torch.tensor([[120, 120, 120], [127, 0, 0], [254, 0, 0], [0, 84, 0], [169, 0, 50], [254, 84, 0], [255, 0, 84], [0, 118, 220], [84, 84, 0], [0, 84, 84], [84, 50, 0], [51, 85, 127], [0, 127, 0], [0, 0, 254], [50, 169, 220], [0, 254, 254], [84, 254, 169], [169, 254, 84], [254, 254, 0], [254, 169, 0], [102, 254, 0], [182, 255, 0]])
+    palette = torch.tensor([[120, 120, 120], [127, 0, 0], [254, 0, 0], [0, 84, 0], [169, 0, 50], [254, 84, 0], [255, 0, 84], [0, 118, 220], [84, 84, 0], [0, 84, 84], [84, 50, 0], [
+                           51, 85, 127], [0, 127, 0], [0, 0, 254], [50, 169, 220], [0, 254, 254], [84, 254, 169], [169, 254, 84], [254, 254, 0], [254, 169, 0], [102, 254, 0], [182, 255, 0]])
 
-    loop = tqdm(dataloader, leave = True, position = 0)
+    loop = tqdm(dataloader, leave=True, position=0)
 
     for idx, (images, labels) in enumerate(loop):
-        
+
         images = images.to(device)
         labels = labels.to(device)
         preds = model(images)
         metrics.update(preds, labels)
-        
+
     ious, miou = metrics.compute_iou()
     acc, macc = metrics.compute_pixel_acc()
     f1, mf1 = metrics.compute_f1()
-                           
-    return acc, macc, f1, mf1, ious, miou
 
+    return acc, macc, f1, mf1, ious, miou
 
 
 @torch.no_grad()
@@ -123,7 +132,7 @@ def evaluate_msf(model, dataloader, device, scales, flip):
                 scaled_logits += logits.softmax(dim=1)
 
         metrics.update(scaled_logits, labels)
-    
+
     acc, macc = metrics.compute_pixel_acc()
     f1, mf1 = metrics.compute_f1()
     ious, miou = metrics.compute_iou()
@@ -139,7 +148,9 @@ def main(cfg):
     dataloader = DataLoader(dataset, 1, num_workers=1, pin_memory=True)
 
     model_path = Path(eval_cfg['MODEL_PATH'])
-    if not model_path.exists(): model_path = Path(cfg['SAVE_DIR']) / f"{cfg['MODEL']['NAME']}_{cfg['MODEL']['BACKBONE']}_{cfg['DATASET']['NAME']}.pth"
+    if not model_path.exists():
+        model_path = Path(cfg['SAVE_DIR']) / \
+            f"{cfg['MODEL']['NAME']}_{cfg['MODEL']['BACKBONE']}_{cfg['DATASET']['NAME']}.pth"
     print(f"Evaluating {model_path}...")
 
     model = eval(cfg['MODEL']['NAME'])(cfg['MODEL']['BACKBONE'], dataset.n_classes)
@@ -147,7 +158,8 @@ def main(cfg):
     model = model.to(device)
 
     if eval_cfg['MSF']['ENABLE']:
-        acc, macc, f1, mf1, ious, miou = evaluate_msf(model, dataloader, device, eval_cfg['MSF']['SCALES'], eval_cfg['MSF']['FLIP'])
+        acc, macc, f1, mf1, ious, miou = evaluate_msf(
+            model, dataloader, device, eval_cfg['MSF']['SCALES'], eval_cfg['MSF']['FLIP'])
     else:
         acc, macc, f1, mf1, ious, miou = evaluate(model, dataloader, device)
 

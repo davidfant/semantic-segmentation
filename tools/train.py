@@ -113,21 +113,22 @@ def main(cfg, gpu, save_dir):
                 lr = sum(lr) / len(lr)
                 info = {'lr': lr, 'Train loss': train_loss.avg.item()}
                 pbar.set_postfix(info)
-                writer.add_scalar('train/loss', info['Train loss'], epoch*iters_per_epoch + iter)
-                wandb.log(info)
+                writer.add_scalar('train/loss', info['Train loss'], epoch*iters_per_epoch+iter)
+                wandb.log(info, step=epoch*iters_per_epoch+iter)
 
-        wandb.log({'epoch': epoch})
+        wandb.log({'epoch': epoch}, step=epoch*iters_per_epoch+iter)
         torch.cuda.empty_cache()
 
         if (epoch+1) % train_cfg['EVAL_INTERVAL'] == 0 or (epoch+1) == epochs:
-            miou = evaluate(model, valloader, loss_fn, device)[-1]
+            miou = evaluate(model, valloader, loss_fn, device, epoch*iters_per_epoch+iter)[-1]
             writer.add_scalar('val/mIoU', miou, epoch)
 
             if miou > best_mIoU:
                 best_mIoU = miou
+            print(f"Current mIoU: {miou} Best mIoU: {best_mIoU}")
+
             torch.save(model.module.state_dict() if train_cfg['DDP'] else model.state_dict(
             ), save_dir / f"{epoch+1}_{model_cfg['NAME']}_{model_cfg['BACKBONE']}_{dataset_cfg['NAME']}.pth")
-            print(f"Current mIoU: {miou} Best mIoU: {best_mIoU}")
 
     writer.close()
     pbar.close()

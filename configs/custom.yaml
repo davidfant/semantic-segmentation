@@ -1,7 +1,7 @@
 DEVICE          : cuda              # device used for training and evaluation (cpu, cuda, cuda0, cuda1, ...)
 SAVE_DIR        : 'output'         # output folder name used for saving the model, logs and inference results
 WANDB_ID        : 'kco0zfvr'        # id of wandb run to resume.
-INIT_EPOCH      : 5
+INIT_EPOCH      : 14
 
 MODEL:                                    
   NAME          : Lawin                                           # name of the model you are using
@@ -27,7 +27,7 @@ LOSS:
 
 OPTIMIZER:
   NAME          : adamw           # optimizer name
-  LR            : 0.001           # initial learning rate used in optimizer
+  LR            : 0.0001           # initial learning rate used in optimizer
   WEIGHT_DECAY  : 0.01            # decay rate used in optimizer 
 
 SCHEDULER:
