@@ -58,8 +58,12 @@ def main(cfg, gpu, save_dir):
     model = eval(model_cfg['NAME'])(model_cfg['BACKBONE'], trainset.n_classes)
     weights_file = save_dir / f"{cfg['INIT_EPOCH']}_{model_cfg['NAME']}_{model_cfg['BACKBONE']}_{dataset_cfg['NAME']}.pth"
     if os.path.exists(weights_file):
-        model.load_state_dict(torch.load(weights_file))
         print(f"[*] Resuming from {weights_file}")
+        weights = torch.load(weights_file)
+        # weights.pop('decode_head.linear_pred.weight')
+        # weights.pop('decode_head.linear_pred.bias')
+        model.load_state_dict(weights, strict=False)
+        del weights
     else:
         model.init_pretrained(model_cfg['PRETRAINED'])
     model = model.to(device)
@@ -84,6 +88,8 @@ def main(cfg, gpu, save_dir):
     scaler = GradScaler(enabled=train_cfg['AMP'])
     writer = SummaryWriter(str(Path(wandb.run.dir) / 'logs'))
 
+    # model.requires_grad_(False)
+    # model.decode_head.linear_pred.requires_grad_(True)
     for epoch in range(cfg['INIT_EPOCH'], epochs):
         model.train()
         if train_cfg['DDP']:
@@ -93,8 +99,6 @@ def main(cfg, gpu, save_dir):
         pbar = tqdm(enumerate(trainloader), total=iters_per_epoch, desc=f"Epoch: [{epoch+1}/{epochs}]")
 
         for iter, (img, lbl) in pbar:
-            optimizer.zero_grad(set_to_none=True)
-
             img = img.to(device, non_blocking=True)
             lbl = lbl.to(device, non_blocking=True)
 
@@ -106,6 +110,7 @@ def main(cfg, gpu, save_dir):
             scaler.step(optimizer)
             scaler.update()
             scheduler.step()
+            optimizer.zero_grad(set_to_none=True)
 
             train_loss.update(loss.detach_(), img.size(0))
             if not iter % 20:
@@ -118,6 +123,7 @@ def main(cfg, gpu, save_dir):
 
         wandb.log({'epoch': epoch}, step=epoch*iters_per_epoch+iter)
         torch.cuda.empty_cache()
+        # model.requires_grad_(True)
 
         if (epoch+1) % train_cfg['EVAL_INTERVAL'] == 0 or (epoch+1) == epochs:
             miou = evaluate(model, valloader, loss_fn, device, epoch*iters_per_epoch+iter)[-1]

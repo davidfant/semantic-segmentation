@@ -1,7 +1,7 @@
 DEVICE          : cuda              # device used for training and evaluation (cpu, cuda, cuda0, cuda1, ...)
 SAVE_DIR        : 'output'         # output folder name used for saving the model, logs and inference results
-WANDB_ID        : 'kco0zfvr'        # id of wandb run to resume.
-INIT_EPOCH      : 14
+WANDB_ID        : '2z3dqhyn'        # id of wandb run to resume.
+INIT_EPOCH      : 34
 
 MODEL:                                    
   NAME          : Lawin                                           # name of the model you are using
@@ -27,7 +27,7 @@ LOSS:
 
 OPTIMIZER:
   NAME          : adamw           # optimizer name
-  LR            : 0.0001           # initial learning rate used in optimizer
+  LR            : 0.0002          # initial learning rate used in optimizer
   WEIGHT_DECAY  : 0.01            # decay rate used in optimizer 
 
 SCHEDULER:
@@ -43,3 +43,9 @@ EVAL:
     ENABLE      : false                                   # multi-scale and flip evaluation  
     FLIP        : true                                    # use flip in evaluation  
     SCALES      : [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]       # scales used in MSF evaluation                
+
+TEST:
+  MODEL_PATH    : 'output/40_Lawin_MiT-B3_CIHP.pth'  # trained model file path
+  FILE          : '/home/shivam/diffusion_tests/sd-ecom-scripts/deployments/playground/samples'    # filename or foldername 
+  IMAGE_SIZE    : [512, 512]                                                            # inference image size in (h, w)
+  OVERLAY       : true 

@@ -49,7 +49,7 @@ def main(cfg):
     file = cfg['TEST']['MODEL_PATH'].split('.')[0]
 
     export_onnx(model, inputs, file)
-    export_coreml(model, inputs, file)
+    # export_coreml(model, inputs, file)
     print(f"Finished converting.")
 
 
