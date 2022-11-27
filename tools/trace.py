@@ -4,6 +4,8 @@ import numpy as np
 import torch
 import yaml
 from rich.console import Console
+import onnx
+from onnxsim import simplify
 
 from semseg.datasets import *
 from semseg.models import *
@@ -12,10 +14,10 @@ console = Console()
 
 
 class SemSeg(torch.nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, device="cuda"):
         super().__init__()
         # inference device cuda or cpu
-        self.device = torch.device(cfg['DEVICE'])
+        self.device = device
         self.palette = eval(cfg['DATASET']['NAME']).PALETTE
 
         # initialize the model and load weights and send to device
@@ -48,7 +50,7 @@ if __name__ == '__main__':
     console.print(f"Model > [red]{cfg['MODEL']['NAME']} {cfg['MODEL']['BACKBONE']}[/red]")
     console.print(f"Model > [red]{cfg['DATASET']['NAME']}[/red]")
 
-    semseg = SemSeg(cfg)
+    semseg = SemSeg(cfg, cfg['DEVICE'])
 
     data = torch.randint(0, 255, (1, *cfg['TEST']['IMAGE_SIZE'], 3), dtype=torch.uint8, device='cuda')
 
@@ -65,6 +67,21 @@ if __name__ == '__main__':
     np.testing.assert_allclose(o.cpu().numpy(), svd_out.cpu().numpy(), rtol=1e-02, atol=1)
     console.print(svd_out.shape, o.shape)
     console.print(o)
-
     file = cfg['TEST']['MODEL_PATH'].split('.')[0]
     traced_script_module.save(f"{file}.pt")
+
+    semseg = SemSeg(cfg, "cpu")
+    torch.onnx.export(
+        semseg,
+        data.cpu(),
+        f"{file}.onnx",
+        input_names=['input'],
+        output_names=['output'],
+        opset_version=13
+    )
+    onnx_model = onnx.load(f"{file}.onnx")
+    onnx.checker.check_model(onnx_model)
+
+    onnx_model, check = simplify(onnx_model)
+    onnx.save(onnx_model, f"{file}.onnx")
+    assert check, "Simplified ONNX model could not be validated"
