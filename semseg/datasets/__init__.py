@@ -16,6 +16,11 @@ from .lapa import LaPa
 from .ibugmask import iBugMask
 from .celebamaskhq import CelebAMaskHQ
 from .facesynthetics import FaceSynthetics
+# from .densepose import DensePoseDataset
+
+import sys
+sys.path.append('/home/fant/repos/scripts')
+from sdecom.helpers.pose.densepose.training.dataset import DensePoseDataset
 
 
 __all__ = [
@@ -38,4 +43,5 @@ __all__ = [
     'iBugMask',
     'CelebAMaskHQ',
     'FaceSynthetics',
+    'DensePoseDataset',
 ]

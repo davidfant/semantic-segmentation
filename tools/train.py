@@ -155,7 +155,7 @@ if __name__ == '__main__':
     with open(args.cfg) as f:
         cfg = yaml.load(f, Loader=yaml.SafeLoader)
 
-    wandb.init(project="human-parsing", id=cfg.get('WANDB_ID'), config=cfg)
+    wandb.init(project=cfg.get('WANDB_PROJECT'), id=cfg.get('WANDB_ID'), config=cfg)
     fix_seeds(3407)
     setup_cudnn()
     gpu = setup_ddp()

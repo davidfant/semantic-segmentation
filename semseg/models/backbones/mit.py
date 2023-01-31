@@ -108,7 +108,8 @@ class MiT(nn.Module):
         self.channels = embed_dims
 
         # patch_embed
-        self.patch_embed1 = PatchEmbed(3, embed_dims[0], 7, 4)
+        # self.patch_embed1 = PatchEmbed(3, embed_dims[0], 7, 4)
+        self.patch_embed1 = PatchEmbed(6, embed_dims[0], 7, 4)
         self.patch_embed2 = PatchEmbed(embed_dims[0], embed_dims[1], 3, 2)
         self.patch_embed3 = PatchEmbed(embed_dims[1], embed_dims[2], 3, 2)
         self.patch_embed4 = PatchEmbed(embed_dims[2], embed_dims[3], 3, 2)

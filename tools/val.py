@@ -26,7 +26,7 @@ def evaluate(model, dataloader, loss_fn, device, global_step):
                            51, 85, 127], [0, 127, 0], [0, 0, 254], [50, 169, 220], [0, 254, 254], [84, 254, 169], [169, 254, 84], [254, 254, 0], [254, 169, 0], [102, 254, 0], [182, 255, 0]])
     loop = tqdm(dataloader, leave=True, position=0)
     val_loss, l_miou, l_macc, l_mf1 = [], [], [], []
-    l_images, l_targets, l_predictions = [], [], []
+    l_images, l_targets, l_openpose, l_predictions = [], [], [], []
     for idx, (images, labels) in enumerate(loop):
 
         images = images.to(device)
@@ -49,15 +49,18 @@ def evaluate(model, dataloader, loss_fn, device, global_step):
                 label = palette[j].squeeze()
                 img = i.squeeze()
 
+                openpose = img[3:]
+                img = img[:3]
+
                 inv_normalize = T.Normalize(
                     mean=(-0.485/0.229, -0.456/0.224, -0.406/0.225),
                     std=(1/0.229, 1/0.224, 1/0.225)
                 )
 
-                image = inv_normalize(img)
-                image *= 255
-                #images = torch.vstack([image, labels])
+                image = inv_normalize(img) * 255.
+                openpose = inv_normalize(openpose) * 255.
                 l_images.append(wandb.Image(image.to(torch.uint8).cpu().numpy().transpose((1, 2, 0))))
+                l_openpose.append(wandb.Image(openpose.to(torch.uint8).cpu().numpy().transpose((1, 2, 0))))
                 l_targets.append(wandb.Image(label.to(torch.uint8).cpu().numpy()))
                 l_predictions.append(wandb.Image(seg_image.to(torch.uint8).cpu().numpy()))
 

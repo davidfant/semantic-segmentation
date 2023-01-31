@@ -10,16 +10,16 @@ class Compose:
     def __init__(self, transforms: list) -> None:
         self.transforms = transforms
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
         if mask.ndim == 2:
             assert img.shape[1:] == mask.shape
         else:
             assert img.shape[1:] == mask.shape[1:]
 
         for transform in self.transforms:
-            img, mask = transform(img, mask)
+            img, op_skeleton, mask = transform(img, op_skeleton, mask)
 
-        return img, mask
+        return img, op_skeleton, mask
 
 
 class Normalize:
@@ -27,11 +27,10 @@ class Normalize:
         self.mean = mean
         self.std = std
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
-        img = img.float()
-        img /= 255
-        img = TF.normalize(img, self.mean, self.std)
-        return img, mask
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+        img = TF.normalize(img.float() / 255., self.mean, self.std)
+        op_skeleton = TF.normalize(op_skeleton.float() / 255., self.mean, self.std)
+        return img, op_skeleton, mask
 
 
 class ColorJitter:
@@ -72,10 +71,10 @@ class RandomAdjustSharpness:
         self.sharpness = sharpness_factor
         self.p = p
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
         if random.random() < self.p:
             img = TF.adjust_sharpness(img, self.sharpness)
-        return img, mask
+        return img, op_skeleton, mask
 
 
 class RandomAutoContrast:
@@ -93,10 +92,10 @@ class RandomGaussianBlur:
         self.kernel_size = kernel_size
         self.p = p
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
         if random.random() < self.p:
             img = TF.gaussian_blur(img, self.kernel_size)
-        return img, mask
+        return img, op_skeleton, mask
 
 
 class RandomHorizontalFlip:
@@ -171,12 +170,13 @@ class RandomRotation:
         self.expand = expand
         self.seg_fill = seg_fill
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
         random_angle = random.random() * 2 * self.angle - self.angle
         if random.random() < self.p:
             img = TF.rotate(img, random_angle, TF.InterpolationMode.BILINEAR, self.expand, fill=0)
+            op_skeleton = TF.rotate(op_skeleton, random_angle, TF.InterpolationMode.BILINEAR, self.expand, fill=0)
             mask = TF.rotate(mask, random_angle, TF.InterpolationMode.NEAREST, self.expand, fill=self.seg_fill)
-        return img, mask
+        return img, op_skeleton, mask
     
 
 class CenterCrop:
@@ -244,7 +244,7 @@ class ResizePad:
         self.size = size
         self.seg_fill = seg_fill
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
         H, W = img.shape[1:]
         tH, tW = self.size
 
@@ -253,13 +253,15 @@ class ResizePad:
         # nH, nW = int(H * scale_factor + 0.5), int(W * scale_factor + 0.5)
         nH, nW = round(H*scale_factor), round(W*scale_factor)
         img = TF.resize(img, (nH, nW), TF.InterpolationMode.BILINEAR)
+        op_skeleton = TF.resize(op_skeleton, (nH, nW), TF.InterpolationMode.BILINEAR)
         mask = TF.resize(mask, (nH, nW), TF.InterpolationMode.NEAREST)
 
         # pad the image
         padding = [0, 0, tW - nW, tH - nH]
         img = TF.pad(img, padding, fill=0)
+        op_skeleton = TF.pad(op_skeleton, padding, fill=0)
         mask = TF.pad(mask, padding, fill=self.seg_fill)
-        return img, mask 
+        return img, op_skeleton, mask 
 
 
 class Resize:
@@ -272,7 +274,7 @@ class Resize:
         """
         self.size = size
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
         H, W = img.shape[1:]
 
         # scale the image 
@@ -280,13 +282,15 @@ class Resize:
         #print(scale_factor)
         #nH, nW = round(H*scale_factor), round(W*scale_factor)
         img = TF.resize(img, (512, 512), TF.InterpolationMode.BILINEAR)
+        op_skeleton = TF.resize(op_skeleton, (512, 512), TF.InterpolationMode.BILINEAR)
         mask = TF.resize(mask, (512, 512), TF.InterpolationMode.NEAREST)
         # make the image divisible by stride
         alignH, alignW = int(math.ceil(512 / 32)) * 32, int(math.ceil(512 / 32)) * 32
         img = TF.resize(img, (alignH, alignW), TF.InterpolationMode.BILINEAR)
+        op_skeleton = TF.resize(op_skeleton, (alignH, alignW), TF.InterpolationMode.BILINEAR)
         mask = TF.resize(mask, (alignH, alignW), TF.InterpolationMode.NEAREST)
         
-        return img, mask 
+        return img, op_skeleton, mask
 
 
 class RandomResizedCrop:
@@ -297,7 +301,7 @@ class RandomResizedCrop:
         self.scale = scale
         self.seg_fill = seg_fill
 
-    def __call__(self, img: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, img: Tensor, op_skeleton: Tensor, mask: Tensor) -> Tuple[Tensor, Tensor]:
         H, W = img.shape[1:]
         tH, tW = self.size
 
@@ -311,6 +315,7 @@ class RandomResizedCrop:
         nH, nW = int(H * scale_factor + 0.5), int(W * scale_factor + 0.5)
         # nH, nW = int(math.ceil(nH / 32)) * 32, int(math.ceil(nW / 32)) * 32
         img = TF.resize(img, (nH, nW), TF.InterpolationMode.BILINEAR)
+        op_skeleton = TF.resize(op_skeleton, (nH, nW), TF.InterpolationMode.NEAREST)
         mask = TF.resize(mask, (nH, nW), TF.InterpolationMode.NEAREST)
 
         # random crop
@@ -321,14 +326,16 @@ class RandomResizedCrop:
         y2 = y1 + tH
         x2 = x1 + tW
         img = img[:, y1:y2, x1:x2]
+        op_skeleton = op_skeleton[:, y1:y2, x1:x2]
         mask = mask[:, y1:y2, x1:x2]
 
         # pad the image
         if img.shape[1:] != self.size:
             padding = [0, 0, tW - img.shape[2], tH - img.shape[1]]
             img = TF.pad(img, padding, fill=0)
+            op_skeleton = TF.pad(op_skeleton, padding, fill=0)
             mask = TF.pad(mask, padding, fill=self.seg_fill)
-        return img, mask 
+        return img, op_skeleton, mask 
 
 
 
@@ -338,12 +345,12 @@ def get_train_augmentation(size: Union[int, Tuple[int], List[int]], seg_fill: in
         # ColorJitter(brightness=0.0, contrast=0.5, saturation=0.5, hue=0.5),
         RandomAdjustSharpness(sharpness_factor=0.1, p=0.1),
         # RandomAutoContrast(p=0.2),
-        RandomHorizontalFlip(p=0.5),
+        # RandomHorizontalFlip(p=0.5),
         # RandomVerticalFlip(p=0.5),
         RandomGaussianBlur((3, 3), p=0.01),
         # RandomGrayscale(p=0.5),
         RandomRotation(degrees=10, p=0.1, seg_fill=seg_fill),
-        RandomResizedCrop(size, scale=(0.5, 2.0), seg_fill=seg_fill),
+        RandomResizedCrop(size, scale=(0.75, 1.5), seg_fill=seg_fill),
         Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     ])
 
